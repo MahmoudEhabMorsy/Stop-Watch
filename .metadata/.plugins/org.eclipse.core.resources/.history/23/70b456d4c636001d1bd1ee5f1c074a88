@@ -1,0 +1,121 @@
+/*
+ * Stop_watch.c
+ *
+ *  Created on: Sep 17, 2022
+ *      Author: EGYPT
+ */
+#include<avr/io.h>
+#include<avr/interrupt.h>
+#include<util/delay.h>
+unsigned char flag_a_second_passed = 0, flag_a_minute_passed = 0,
+		flag_an_hour_passed = 0;
+//unsigned char sec1 = 0, sec2 = 0, min1 = 0, min2 = 0, hour1 = 0, hour2 = 0;
+unsigned char digits[6]={0}; //{sec1,sec2,min1,min2,hour1,hour2}
+ISR(TIMER1_COMPA_vect) {
+	flag_a_second_passed = 1;
+}
+void a_second_passed(void) {
+	if (digits[0] < 9) {
+		digits[0]++;
+	} else {
+		digits[0] = 0;
+		if (digits[1] < 5) {
+			digits[1]++;
+		} else {
+			digits[1] = 0;
+			flag_a_minute_passed = 1;
+		}
+	}
+	flag_a_second_passed = 0;
+}
+void a_minute_passed(void) {
+	if (digits[2] < 9) {
+		digits[2]++;
+	} else {
+		digits[2] = 0;
+		if (digits[3] < 5) {
+			digits[3]++;
+		} else {
+			digits[3] = 0;
+			flag_an_hour_passed = 1;
+		}
+	}
+	flag_a_minute_passed = 0;
+}
+void an_hour_passed(void) {
+	if (digits[4] < 9) {
+		digits[4]++;
+	} else {
+		digits[4] = 0;
+		if (digits[5] < 9) {
+			digits[5]++;
+		} else {
+			digits[5] = 0;
+		}
+	}
+	flag_an_hour_passed = 0;
+}
+void Timer1_Ini(void) {
+	TCNT1 = 0;
+	OCR1A = 100;
+	TIMSK |= (1 << 4);
+	TCCR1A = 0x08;
+	TCCR1B = 0x0D;
+}
+void Pins_Ini(void) {
+	DDRC |= 0x0F;
+	DDRA |= 0x3F;
+	DDRD &= ~0x0C;
+	DDRB &= ~(1 << 2);
+	PORTD |= (1 << 2);
+	PORTB |= (1 << 2);
+	PORTC &= 0xF0;
+}
+void INT0_Ini(void){
+	MCUCR|=(1<<1);
+	GICR|=(1<<6);
+}
+void INT1_Ini(void){
+	MCUCR|=0x0C;
+	GICR|=(1<<7);
+}
+void INT2_Ini(void){
+	MCUCSR&=~(1<<6);
+	GICR|=(1<<5);
+}
+int main(void) {
+	Pins_Ini();
+	Timer1_Ini();
+	INT0_Ini();
+	INT1_Ini();
+	INT2_Ini();
+	SREG |= (1 << 7);
+	while (1) {
+		if (flag_a_second_passed == 1) {
+			a_second_passed();
+		} else if (flag_a_minute_passed == 1) {
+			a_minute_passed();
+		} else if (flag_an_hour_passed == 1) {
+			an_hour_passed();
+		}
+		PORTA = (PORTA & 0xC0) | 0x01;
+		PORTC = (PORTC & 0xF0) | digits[0]; //display number
+		_delay_us(5);
+		PORTA = (PORTA & 0xC0) | 0x02;
+		PORTC = (PORTC & 0xF0) | digits[1];
+		_delay_us(5);
+		PORTA = (PORTA & 0xC0) | 0x04;
+		PORTC = (PORTC & 0xF0) | digits[2];
+		_delay_us(5);
+		PORTA = (PORTA & 0xC0) | 0x08;
+		PORTC = (PORTC & 0xF0) | digits[3];
+		_delay_us(5);
+		PORTA = (PORTA & 0xC0) | 0x10;
+		PORTC = (PORTC & 0xF0) | digits[4];
+		_delay_us(5);
+		PORTA = (PORTA & 0xC0) | 0x20;
+		PORTC = (PORTC & 0xF0) | digits[5];
+		_delay_us(5);
+	}
+}
+
